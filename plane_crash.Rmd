@@ -1,0 +1,50 @@
+---
+title: "télécharger et analyser des données issues de Wikidata"
+author: "Damien Belvèze"
+date: "5 octobre 2024"
+---
+
+```{r echo=TRUE, include=TRUE}
+library(WikidataR) # SPARQL querying package
+library(ggplot2)
+df <- query_wikidata('SELECT ?item ?itemLabel ?date ?deaths ?country ?countryLabel ?long ?lat ?coord WHERE {
+  ?item wdt:P31 wd:Q744913 .
+  MINUS { ?item wdt:P31 wd:Q898712 . }
+
+  OPTIONAL { ?item wdt:P585 ?date. }
+  OPTIONAL { ?item wdt:P625 ?coord. 
+                 ?coords_sample ps:P625 ?coord;
+                 psv:P625 [
+                   wikibase:geoLatitude ?lat;
+                   wikibase:geoLongitude ?long
+                 ] .
+        }
+  OPTIONAL { ?item wdt:P1120 ?deaths.}
+  OPTIONAL { ?item wdt:P17 ?country.
+  ?country rdfs:label ?countryLabel .
+  FILTER(lang(?countryLabel) = "en") # affiche seulement ces noms de pays en anglais
+
+  }
+   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}')
+print(df)
+```
+
+
+# édition de la carte
+
+```{r}
+library(leaflet)
+df$long <- as.numeric(df$long)
+df$lat <- as.numeric(df$lat)
+# Create the map
+leaflet(df) %>% 
+  # Add tiles for the base map (OpenStreetMap used here)
+  addTiles() %>% 
+  # Add markers with pop-up labels showing the name of each location
+  addMarkers(lng = ~long, lat = ~lat, popup = ~itemLabel)
+
+```
+
+
+
