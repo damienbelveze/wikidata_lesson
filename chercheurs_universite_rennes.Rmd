@@ -1,0 +1,204 @@
+---
+title: "télécharger et analyser des données issues de Wikidata"
+author: "Damien Belvèze"
+date: "5 octobre 2024"
+---
+
+
+# vers l'écriture de nouvelles pages Wikipédia pour des chercheurs ? 
+
+[Critères d'admissibilité](https://fr.wikipedia.org/wiki/Wikip%C3%A9dia:Notori%C3%A9t%C3%A9_des_personnes)
+
+- avoir reçu un prix scientifique reconnu nationalement ou internationalement, tel qu'un prix Nobel, une médaille d'or (voire d'argent) du CNRS, une médaille Fields, un Prix Acfas (prix canadien) ou une autre distinction bénéficiant d'une reconnaissance similaire (comme le Prix Gay-Lussac Humboldt par exemple)1 ;  
+- être considéré comme un auteur de référence dans le domaine concerné ;  
+- être considéré comme étant à l'origine d'une théorie largement diffusée.  
+
+
+| récompense | élément wikidata |
+|:---:|:---:|
+| Prix Nobel | Q7191 |
+| médaille or CNRS | Q1957671  |
+| médaille argent CNRS | Q3332287 |
+| prix Acfas | Q24928963) |
+| prix Gay-Lussac | Q1496528 |
+
+
+# trouver des enseignants de l'Université de Rennes sur Wikidata
+
+## Univerité de rennes seulement
+```{r}
+library(WikidataR)
+# enseignants-chercheurs ayant pour employés l'Université de Rennes (Q726595) ou l'Université de Rennes 1 (Q1987282)
+df <- query_wikidata('SELECT DISTINCT ?item ?itemLabel WHERE {
+  ?item wdt:P108|wdt:P463 wd:Q1987282 .
+
+SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }
+}')
+print(df)
+```
+
+
+
+## Université de Rennes + Université de Rennes 1
+```{r}
+library(WikidataR)
+# enseignants-chercheurs ayant pour employés l'Université de Rennes (Q726595) ou l'Université de Rennes 1 (Q1987282)
+df1 <- query_wikidata('SELECT DISTINCT ?item ?itemLabel WHERE {
+  ?item wdt:P108|wdt:P463 ?o .
+  
+  VALUES ?o{
+  wd:Q1987282
+  wd:Q1987282
+  }
+
+SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }
+}')
+print(df1)
+```
+
+
+# éléments Wikidata qui disposent d'une page Wikipédia
+
+```{r}
+library(WikidataR)
+df2 <- query_wikidata('
+SELECT DISTINCT ?item ?itemLabel WHERE {
+  ?item wdt:P108 wd:Q1987282 .
+  ?wikipedia schema:about ?item ;              # Get wikipedia information about this item
+             schema:isPartOf <https://fr.wikipedia.org/> .  # Only en pages, not other language versions
+SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }
+
+}')
+print(df2)
+
+```
+
+# enseignants-chercheurs qui ont une page Wikipedia et une récompense
+
+## ne pas afficher les récompenses
+
+```{r}
+df3 <- query_wikidata('
+SELECT DISTINCT ?item ?itemLabel WHERE {
+  ?item wdt:P108 wd:Q1987282 .
+  ?wikipedia schema:about ?item ;              # Get wikipedia information about this item
+             schema:isPartOf <https://fr.wikipedia.org/> .  # Only en pages, not other language versions 
+  FILTER EXISTS { ?item wdt:P166 ?award .}
+SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }
+
+}')
+print(df3)
+```
+
+
+## afficher les récompenses
+
+```{r}
+df4 <- query_wikidata('
+SELECT DISTINCT ?item ?itemLabel ?awardLabel WHERE {
+  ?item wdt:P108 wd:Q1987282 .
+  ?item wdt:P166 ?award .
+  ?award rdfs:label ?awardLabel .
+  ?wikipedia schema:about ?item ;              # Get wikipedia information about this item
+             schema:isPartOf <https://fr.wikipedia.org/> .  # Only en pages, not other language versions 
+  FILTER EXISTS { ?item wdt:P166 ?award .}
+SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }
+
+}')
+print(df4)
+```
+
+## afficher les enseignants-chercheurs de l'Université qui ont eu des récompenses mais n'ont pas de page Wikipedia
+
+```{r}
+df5 <- query_wikidata('SELECT DISTINCT ?item ?itemLabel ?award WHERE {
+  ?item wdt:P108 wd:Q1987282 .
+  FILTER NOT EXISTS {
+  ?wikipedia schema:about ?item ;              # Get wikipedia information about this item
+             schema:isPartOf <https://fr.wikipedia.org/> .  }# Only en pages, not other language versions }
+  FILTER EXISTS { ?item wdt:P166 ?award .}
+SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }
+
+}
+')
+print(df5)
+```
+
+
+```{r}
+df6 <- query_wikidata('SELECT DISTINCT ?item ?itemLabel ?universityLabel ?awardLabel WHERE {
+   VALUES ?university { wd:Q726595 wd:Q1987282 } .    # Universities
+   ?item wdt:P106 wd:Q1650915 ;                       # Occupation is researcher
+         wdt:P27  wd:Q142 ;                         # Country of citizenship is France
+         wdt:P166 ?award .                         # Has a scientific award
+         ?award rdfs:label ?awardLabel .
+         FILTER(lang(?awardLabel) = "fr")
+         ?university rdfs:label ?universityLabel .
+         FILTER(lang(?universityLabel) = "fr")
+   FILTER (?award = wd:Q7191 ||                   # Award value to check against
+           ?award = wd:Q1957671 ||
+           ?award = wd:Q3332287 ||
+           ?award = wd:Q24928963 ||
+           ?award = wd:Q1496528) .
+   FILTER NOT EXISTS {                               # Check if there is no French Wikipedia page for this item
+      ?wikipedia schema:about  ?item ;               # Get wikipedia information about this item
+             schema:isPartOf <https://fr.wikipedia.org/> }  # Only en pages, not other language versions
+  
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }
+}
+')
+print(df6)
+```
+
+Un grand nombre d'enseignants chercheurs de l'Université de Rennes ont reçu la médaille d'argent du CNRS, quelques uns ont reçu le prix Gay-Lussac.
+
+
+# et parmi les chercheurs en France (au-delà de l'Université de Rennes ?)
+
+(mettons de côté les médailles d'argent du CNRS)
+
+
+```{r}
+df8 <- query_wikidata('SELECT DISTINCT ?item ?itemLabel ?awardLabel WHERE {
+   ?item wdt:P106 wd:Q1650915 ;                       # Occupation is researcher
+         wdt:P27  wd:Q142 ;                         # Country of citizenship is France
+         wdt:P166 ?award .                         # Has a scientific award
+         ?award rdfs:label ?awardLabel .
+         FILTER(lang(?awardLabel) = "fr")
+   FILTER (?award = wd:Q7191 ||                   # Award value to check against
+           ?award = wd:Q1957671 ||
+           ?award = wd:Q1496528) .
+   FILTER NOT EXISTS {                               # Check if there is no French Wikipedia page for this item
+      ?wikipedia schema:about  ?item ;               # Get wikipedia information about this item
+             schema:isPartOf <https://fr.wikipedia.org/> }  # Only en pages, not other language versions
+  
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }
+}
+')
+print(df8)
+```
+
+
+
+
+
+# Ajouter des propriétés à des éléments Wikidata
+
+Muriel Hissler, Gilles Salbert et Mikaël Kepenekian sont des éléments dans Wikidata. 
+Nous allons leur ajouter comme propriété "a un poste" (P39) à l'UNiversité de Rennes (Q1987282)
+
+```{r}
+install.packages("WikidataR")
+library(WikidataR)
+
+
+
+write_wikidata(items        = c("Muriel Hissler","Gilles Salbert",  "Mikaël Kepenekian"),
+               properties   = "P108",
+               values       = "Q1987282",
+               format       = "api",
+               api.username = "Udo_Bolano", 
+               api.token    = "$2y$10$qy3Omn7Dn4DaXAD1QBWcs.dNjrKwlrc.cFX2rVZMyQ7oYt2xYSmJS"
+)
+```
+

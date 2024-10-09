@@ -7,7 +7,7 @@ date: "5 octobre 2024"
 ```{r echo=TRUE, include=TRUE}
 library(WikidataR) # SPARQL querying package
 library(ggplot2)
-df <- query_wikidata('SELECT ?item ?itemLabel ?date ?deaths ?country ?countryLabel ?long ?lat ?coord WHERE {
+df <- query_wikidata('SELECT ?item ?itemLabel ?date ?deaths ?country ?countryLabel ?latitude ?longitude ?coord WHERE {
   ?item wdt:P31 wd:Q744913 .
   MINUS { ?item wdt:P31 wd:Q898712 . }
 
@@ -15,8 +15,8 @@ df <- query_wikidata('SELECT ?item ?itemLabel ?date ?deaths ?country ?countryLab
   OPTIONAL { ?item wdt:P625 ?coord. 
                  ?coords_sample ps:P625 ?coord;
                  psv:P625 [
-                   wikibase:geoLatitude ?lat;
-                   wikibase:geoLongitude ?long
+                   wikibase:geoLatitude ?latitude;
+                   wikibase:geoLongitude ?longitude
                  ] .
         }
   OPTIONAL { ?item wdt:P1120 ?deaths.}
@@ -27,7 +27,7 @@ df <- query_wikidata('SELECT ?item ?itemLabel ?date ?deaths ?country ?countryLab
   }
    SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
 }')
-print(df)
+write.csv(df, "no_country.csv")
 ```
 
 
@@ -35,16 +35,110 @@ print(df)
 
 ```{r}
 library(leaflet)
-df$long <- as.numeric(df$long)
-df$lat <- as.numeric(df$lat)
+df$longitude <- as.numeric(df$longitude)
+df$latitude <- as.numeric(df$latitude)
 # Create the map
 leaflet(df) %>% 
   # Add tiles for the base map (OpenStreetMap used here)
   addTiles() %>% 
   # Add markers with pop-up labels showing the name of each location
-  addMarkers(lng = ~long, lat = ~lat, popup = ~itemLabel)
+  addMarkers(lng = ~longitude, lat = ~latitude, popup = ~itemLabel)
 
 ```
 
+# conversion des coordonnées en noms de pays
+
+
+
+
+# sélection des résultats qui ont des coordonnées géographiques mais pas de noms de pays
+
+```{r echo=TRUE, include=TRUE}
+
+df1 <- query_wikidata('SELECT ?item ?itemLabel ?date ?deaths ?country ?countryLabel ?latitude ?longitude ?coord WHERE {
+  ?item wdt:P31 wd:Q744913 .
+  ?item wdt:P625 ?coord. 
+                 ?coords_sample ps:P625 ?coord;
+                 psv:P625 [
+                   wikibase:geoLatitude ?latitude;
+                   wikibase:geoLongitude ?longitude
+                 ] .
+  
+  MINUS { ?item wdt:P31 wd:Q898712 . }
+
+  OPTIONAL { ?item wdt:P585 ?date. }
+
+  
+  OPTIONAL { ?item wdt:P1120 ?deaths.}
+  FILTER NOT EXISTS { ?item wdt:P17 ?o }
+
+   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}')
+print(df1)
+```
+# Accidents d'avion en France
+
+
+```{r echo=TRUE, include=TRUE}
+
+df1 <- query_wikidata('SELECT ?item ?itemLabel ?date ?deaths ?country ?countryLabel ?latitude ?longitude ?coord WHERE {
+  ?item wdt:P31 wd:Q744913 .
+  ?item wdt:P17 wd:Q142 .
+  ?item wdt:P625 ?coord. 
+                 ?coords_sample ps:P625 ?coord;
+                 psv:P625 [
+                   wikibase:geoLatitude ?latitude;
+                   wikibase:geoLongitude ?longitude
+                 ] .
+  
+  MINUS { ?item wdt:P31 wd:Q898712 . }
+
+  OPTIONAL { ?item wdt:P585 ?date. }
+
+  
+  OPTIONAL { ?item wdt:P1120 ?deaths.}
+  FILTER NOT EXISTS { ?item wdt:P17 ?o }
+
+   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}')
+print(df1)
+```
+
+
+# restauration du nom de pays à partir des coordonnées géographiques quand elles sont manquantes
+
+
+```{r}
+install.packages("tmaptools")
+library(tmaptools)
+
+# Initialize a vector to store country names
+country_name <- vector("character", nrow(df))
+
+# Loop through each row of the dataframe and get the reverse geocoding result
+for (i in 1:nrow(df)) {
+  # Define coords as a vector containing the longitude and latitude for each row
+  coords <- c(df$longitude[i], df$latitude[i])  # Longitude first, Latitude second
+  
+  # Use reverse geocoding for the current coordinates
+  location <- tryCatch({
+    reverse_geocode_OSM(coords)  # Using the reverse geocode function from tmaptools
+  }, error = function(e) {
+    return(NA)  # Handle errors and return NA if geocoding fails
+  })
+  
+  # Extract the country name if the location is found, otherwise return NA
+  if (!is.na(location)) {
+    country_name[i] <- location$address$country
+  } else {
+    country_name[i] <- NA
+  }
+}
+
+# Add the country names as a new column in your dataframe
+df$country_name <- country_name
+write.csv(df, "country.csv")
+
+```
 
 
