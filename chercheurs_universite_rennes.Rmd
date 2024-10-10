@@ -48,7 +48,7 @@ df1 <- query_wikidata('SELECT DISTINCT ?item ?itemLabel WHERE {
   
   VALUES ?o{
   wd:Q1987282
-  wd:Q1987282
+  wd:Q726595
   }
 
 SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }

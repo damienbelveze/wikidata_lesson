@@ -1,0 +1,178 @@
+---
+title: "télécharger et analyser des données issues de Wikidata : batailles"
+author: "Damien Belvèze"
+date: "9 octobre 2024"
+---
+
+# all battles of the greek resistance
+
+
+```{r}
+library(WikidataR)
+df <- query_wikidata('SELECT DISTINCT ?item ?itemLabel WHERE {
+  ?item wdt:P31 wd:Q178561 . # Is a battle
+  ?item wdt:P17 wd:Q41 .    # Has Greece as location
+  ?item wdt:P361 wd:Q490035 .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }
+}
+')
+print(df)
+```
+
+
+bataille: Q178561
+location: P276
+coordinates : P625 (latitude ° longitude)
+
+Grêce: Q41
+est une partie de (fait partie de la campagne) : P361
+guerre italo-grecque : Q223604
+mouvement de la résistance grecque : Q440035
+date : P585
+
+a une page sur Wikipedia
+
+```{r}
+library(WikidataR)
+df1 <- query_wikidata('SELECT DISTINCT ?item ?itemLabel ?date ?coord ?latitude ?longitude WHERE {
+  ?item wdt:P31 wd:Q178561 . # Is a battle
+  ?item wdt:P17 wd:Q41 .    # Has Greece as location
+  ?item wdt:P361  ?o .
+  
+  VALUES ?o { wd:Q490035
+              wd:Q223604
+              wd:Q188972
+  
+  }
+  
+ OPTIONAL { ?item wdt:P585 ?date. }
+ OPTIONAL { ?item wdt:P625 ?coord. 
+                 ?coords_sample ps:P625 ?coord;
+                 psv:P625 [
+                   wikibase:geoLatitude ?latitude;
+                   wikibase:geoLongitude ?longitude
+                 ] .
+}
+
+  FILTER NOT EXISTS {                               # Check if there is no French Wikipedia page for this item
+      ?wikipedia schema:about  ?item ;               # Get wikipedia information about this item
+             schema:isPartOf <https://fr.wikipedia.org/> }  # Only en pages, not other language versions
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}
+')
+print(df1)
+write.csv(df1, "batailles.csv")
+```
+
+
+
+
+
+autres batailles impliquant la résistance : 
+
+(Q16331929)
+
+Ajout des coordonnées géographiques
+
+
+création de la carte 
+
+
+```{r}
+
+dataframe <- read.csv("batailles_complet.csv")
+print(dataframe)
+```
+```{r}
+# Load required library
+library(dplyr)
+
+dataframe$date <- as.Date(dataframe$date)
+
+dataframe <- dataframe %>%
+   mutate(date_iso = paste0("+", date, "T00:00:00Z/11"))
+print(dataframe)
+
+```
+```{r}
+print(dataframe)
+```
+
+```{r}
+library(WikidataR)
+qitems <- as_qid(dataframe$item)
+print(qitems)
+```
+
+```{r}
+qdates <- qual_values(dataframe$date)
+print(qdates)
+
+```
+
+
+```{r}
+
+
+library(WikidataR)
+
+
+
+write_wikidata(items        = c("Q18121569"),
+               properties   = "P585",
+               values  = "+1949-01-22T00:00:00Z/11",
+               format       = "api",
+               api.username = "Udo_Bolano", 
+               api.token    = "$2y$10$qy3Omn7Dn4DaXAD1QBWcs.dNjrKwlrc.cFX2rVZMyQ7oYt2xYSmJS"
+)
+
+
+
+```
+
+```{r}
+
+print(dataframe$item)
+```
+
+
+
+
+```{r}
+
+item <- c(dataframe$item)  # This should be replaced by actual QID created on Wikidata
+property <- "P585"     # Date of birth
+value <- c(dataframe$date_iso)  # ISO date format
+
+library(WikidataR)
+write_wikidata(items = item,
+               properties = "P585",
+               values = value,
+               format = "api",
+               api.username = "Udo_Bolano", 
+               api.token = "$2y$10$qy3Omn7Dn4DaXAD1QBWcs.dNjrKwlrc.cFX2rVZMyQ7oYt2xYSmJS")
+
+```
+
+
+
+```{r}
+
+# Sample dataframe with 10 rows
+
+
+# Convert the date column to Date type
+dataframe$date <- as.Date(dataframe$date)
+
+# Mutate the dataframe with a new date_iso column
+dataframe <- dataframe %>%
+  mutate(date_iso = paste0("+", date, "T00:00:00Z/11"))
+
+# Print all rows of the dataframe
+print(dataframe, n = Inf)
+
+```
+```{r}
+dataframe <- dataframe[-2, ]
+print(dataframe)
+```

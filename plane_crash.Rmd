@@ -129,7 +129,7 @@ for (i in 1:nrow(df)) {
   
   # Extract the country name if the location is found, otherwise return NA
   if (!is.na(location)) {
-    country_name[i] <- location$address$country
+    country_name[i] <- location$country
   } else {
     country_name[i] <- NA
   }
