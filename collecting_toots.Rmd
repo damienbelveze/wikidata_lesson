@@ -1,0 +1,67 @@
+---
+title: "collecting toots"
+author: "Damien Belvèze"
+date: "2024-10-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+install.packages('rtoot')
+install.packages('htm2txt')
+install.packages('dplyr')
+library(rtoot)
+```
+
+
+```{r}
+auth_setup()
+```
+
+```{r}
+library(rtoot)
+df <- search_accounts("SO_UnivRennes")
+df2 <- get_account_statuses("112370075539544475", limit = 220, verbose = TRUE)
+df3 <- apply(df2,2,as.character)
+write.csv(x = df3, file = "SO_Univ_Rennes_toots.csv")
+```
+
+```{r}
+library(dplyr)
+library(rvest)
+library(purrr)
+
+# Assuming df2 is your dataframe with a 'content' column containing HTML
+df2_clean <- df2 %>%
+  mutate(content = map_chr(content, ~ read_html(as.character(.)) %>% html_text()))
+
+# df2_clean is the new dataframe where 'content' column has HTML tags removed
+
+```
+
+
+
+```{r}
+statuses_content <- paste(df2$content, collapse = " ")
+rvest::html_text2(rvest::read_html(statuses_content))
+```
+
+```{r}
+library(htmltools)
+library(dplyr)
+tabledata <- df2 |>
+  filter(content != "") |>
+    filter(visibility == "public") |>
+  mutate(
+    url = paste0("<a target='blank' href='", uri,"' ", html_tag("rel", "noopener"), "> >></A>"),
+    content = paste(content, url),
+    created_at := As.character(as.POSIXct(created_at, format = "%Y-%m-%d %H:%M UTC"))
+  ) |>
+  select(CreatedAt = created_at, Post = content, Replies = replies_count, Favorites = favourites_count, Boosts = reblogs_count)
+```
+
+
+
+
+
+
+

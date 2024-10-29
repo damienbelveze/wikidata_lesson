@@ -1,5 +1,5 @@
 ---
-title: 'télécharger et analyser des données issues de Wikidata : batailles'
+title: 'télécharger et analyser des données issues de Wikidata'
 author: "Damien Belvèze"
 date: "9 octobre 2024"
 output: 
@@ -158,11 +158,9 @@ Par ailleurs, pour réaliser des enrichissements de groupe (voir la [partie sur 
 relations entre Wikidata et Wikipédia. 
 Lorsqu'on veut écrire des articles sur Wikipédia (par exemple lors des Wikithons) il peut être intéressant de se poser la question suivante : 
 
-quels éléments historiques il y a dans Wikidata qui n'ont pas encore fait l'objet d'un article Wikipédia dans ma langue. Sachant que tous les éléments dans Wikidata n'ont pas vocation à faire l'objet de pages dans Wikipédia (cf. critères d'admissibilité). Mais pour les batailles, sans doute que c'est le cas. 
+Problème : quels éléments il y a dans Wikidata qui n'ont pas encore fait l'objet d'un article Wikipédia dans ma langue. Sachant que tous les éléments dans Wikidata n'ont pas vocation à faire l'objet de pages dans Wikipédia (cf. critères d'admissibilité). 
+Les batailles dès lors qu'elles impliquent un certain nombre de forces en présence et qu'elles ont un impact sur la suite de la campagne et la situation politique méritent probablement d'être référencées dans l'encyclopédie. 
 
-
-
-a une page sur Wikipedia
 
 ```{r}
 library(WikidataR)
@@ -196,18 +194,11 @@ print(df1)
 write.csv(df1, "batailles.csv")
 ```
 
+## compléter les données de Wikidata
 
-
-
-
-autres batailles impliquant la résistance : 
-
-(Q16331929)
-
-Ajout des coordonnées géographiques
-
-
-création de la carte 
+Dans le tableau précédent, il y a beaucoup d'informations manquantes (N/A)
+le tableau suivant présente des données plus complètes récupérées sur le web.
+C'est à partir de ce tableau qu'on va bâtir la carte des batailles en Grêce pendant la décennie 40
 
 
 ```{r echo=TRUE}
@@ -215,6 +206,21 @@ création de la carte
 dataframe <- read.csv("batailles_complet.csv")
 print(dataframe)
 ```
+
+
+
+
+# enrichissement de Wikidata {#enrichissements}
+
+Possibilité de faire des enrichissements groupés avec un compte Wikimedia et la fonction write_data de WikidataR
+
+(on ne va pas le faire, juste montrer comment procéder)
+
+
+Lorqu'on a un compte sur wikimedia, aller sur le site [Quickstatement tool forge](https://quickstatements.toolforge.org/#/), s'identifier, récupérer le jeton pour faire des modifications via une API [en cliquant sur votre nom d'utilisateur](https://quickstatements.toolforge.org/#/user) qui apparaît en haut à droite.
+
+
+## format de date
 
 
 ```{r echo=FALSE, include=TRUE}
@@ -229,8 +235,7 @@ print(dataframe)
 
 ```
 
-
-# enrichissement de Wikidata {#enrichissements}
+## commande Write_wikidata
 
 ```
 
