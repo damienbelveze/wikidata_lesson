@@ -237,7 +237,7 @@ print(dataframe)
 
 ## commande Write_wikidata
 
-```
+```{r envoi d'informations à wikidata}
 
 item <- c(dataframe$item)  # This should be replaced by actual QID created on Wikidata
 property <- "P585"     # Date of birth
