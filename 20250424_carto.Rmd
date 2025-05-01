@@ -1,0 +1,64 @@
+---
+title: "Cimetières de guerre allemands"
+author: "Damien Belvèze"
+date: "2024-10-03"
+output: html_document
+---
+
+
+# collecter des données depuis Wikidata
+
+collecte de cimetières militaires gérés par la Commission des Cimetières de Guerre Allemands (Volksbund Deutsche Kriegsgräberfürsorge)
+
+
+```{r echo=TRUE, include=TRUE}
+
+#http://www.r-bloggers.com/sparql-with-r-in-less-than-5-minutes/
+
+library(WikidataR) # SPARQL querying package
+library(ggplot2)
+
+df <- query_wikidata('SELECT DISTINCT ?item ?itemLabel ?coords ?lat ?long
+WHERE {
+  ?item p:P31/ps:P31/wdt:279* wd:Q1241568 .
+  ?item wdt:P137 wd:Q708567 .
+  ?item p:P625 ?coords_sample . 
+  {
+    SELECT (SAMPLE(?coords_stmt) AS ?coords_sample) {
+      ?place p:P31/ps:P31/wdt:279* wd:Q1241568 ;
+             p:P625 ?coords_stmt .
+    } GROUP BY ?place
+  }
+  ?coords_sample ps:P625 ?coords;
+                 psv:P625 [
+                   wikibase:geoLatitude ?lat;
+                   wikibase:geoLongitude ?long
+                 ] .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}
+ORDER BY ?placeLabel')
+
+# afficher les éléments obtenus
+
+```
+
+affichage des éléments issus de Wikidata
+
+```{r}
+print(df)
+```
+
+# Production de la carte
+
+Par défaut, le fonds de carte correspond à celui d'[OpenStreetMap](https://www.openstreetmap.org)
+
+```{r}
+library(leaflet)
+df$long <- as.numeric(df$long)
+df$lat <- as.numeric(df$lat)
+# Create the map
+leaflet(df) %>% 
+  # Add tiles for the base map (OpenStreetMap used here)
+  addTiles() %>% 
+  # Add markers with pop-up labels showing the name of each location
+  addMarkers(lng = ~long, lat = ~lat, popup = ~itemLabel)
